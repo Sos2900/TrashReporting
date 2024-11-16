@@ -1,0 +1,198 @@
+import javax.swing.*;
+import java.sql.*;
+
+public class Main {
+    private static Connection connection;
+    public static void main(String[] args) {
+
+        connectToDatabase();
+        //createtrashReports();
+        //createadminData();
+        createuserData();
+
+
+
+        JFrame frame = new JFrame("Register/Login");
+        frame.setSize(800, 600);
+        frame.setLayout(null);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        connectToDatabase();
+
+        JLabel labelUsername = new JLabel("Username:");
+        labelUsername.setBounds(30, 80, 100, 20);
+
+        JTextField usernameField = new JTextField(30);
+        usernameField.setBounds(150, 80, 150, 20);
+
+        JLabel labelPassword = new JLabel("Password:");
+        labelPassword.setBounds(30, 110, 100, 20);
+
+        JPasswordField passwordField = new JPasswordField(30);
+        passwordField.setBounds(150, 110, 150, 20);
+
+        String[] userData = {"", ""};
+        JButton registerButton = new JButton("Register");
+        registerButton.setBounds(30, 150, 150, 30);
+        registerButton.addActionListener(e -> {
+            userData[0] = usernameField.getText();
+            userData[1] = new String(passwordField.getPassword());
+
+            System.out.println("Username = " + userData[0]);
+            System.out.println("Password = " + userData[1]);
+
+            registerUser(userData[0], userData[1], frame);
+        });
+        JButton loginButton = new JButton("Log in");
+        loginButton.setBounds(200, 150, 150, 30);
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            loginUser(username, password, frame);
+        });
+
+
+        frame.add(labelUsername);
+        frame.add(usernameField);
+        frame.add(labelPassword);
+        frame.add(passwordField);
+        frame.add(registerButton);
+        frame.add(loginButton);
+
+        frame.setVisible(true);
+    }
+
+    public static void connectToDatabase() {
+        try {
+            String connectionUrl =
+                    "jdbc:sqlserver://localhost:1433;"
+                            + "database=Test1;"
+                            + "user=test;"
+                            + "password=test;"
+                            + "encrypt=true;"
+                            + "trustServerCertificate=true;"
+                            + "loginTimeout=30;";
+
+            connection = DriverManager.getConnection(connectionUrl);
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+    public static void createtrashReports() {
+        try {
+            Statement statement = connection.createStatement();
+            String createtrashReport = "CREATE TABLE dbo.trashReports(UserID INT, Severity INT, Description NVARCHAR(100))";
+            statement.executeUpdate(createtrashReport);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void createuserData(){
+        try {
+            Statement statement = connection.createStatement();
+            String createuserData = "CREATE TABLE dbo.userdata(Username nvarchar(50), Password nvarchar(50), ID INT PRIMARY KEY IDENTITY(1,1))";
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void createadminData(){
+        try {
+            Statement statement = connection.createStatement();
+            String createadminData = "CREATE TABLE dbo.adminData (Username nvarchar(50), Password nvarchar(50), EmployeeID INT PRIMARY KEY IDENTITY(1,1))";
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void registerUser(String username, String password, JFrame frame) {
+        try {
+            Statement statement = connection.createStatement();
+            String insertuserdata = "INSERT INTO dbo.userdata (Username, Password) " +
+                    "VALUES ('" + username + "', '" + password + "')";
+            int rowsInserted = statement.executeUpdate(insertuserdata);
+                if (rowsInserted > 0) {
+                     JOptionPane.showMessageDialog(frame, "success");
+            }
+            statement.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+    public static void loginUser(String username, String password, JFrame frame) {
+        try {
+            Statement statement = connection.createStatement();
+
+
+            String query = "SELECT * FROM dbo.userdata WHERE Username='" + username + "' AND Password='" + password + "'";
+            ResultSet resultSet = statement.executeQuery(query);
+            int userId=resultSet.getInt(1);
+            if (resultSet.next()) {
+                System.out.println("success");
+                JOptionPane.showMessageDialog(frame, "success");
+                openReportScreen(userId);
+            } else {
+                System.out.println("Login failed");
+                JOptionPane.showMessageDialog(frame, "Login Failed");
+            }
+
+            resultSet.close();
+            statement.close();
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+    public static void openReportScreen(int userId) {
+        JFrame reportFrame = new JFrame("Report a trash site");
+        reportFrame.setSize(800, 600);
+        reportFrame.setLayout(null);
+        reportFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+
+        JLabel labelSeverity = new JLabel("Severity 1-10");
+        labelSeverity.setBounds(30, 80, 150, 20);
+        JTextField severityField = new JTextField(30);
+        severityField.setBounds(150, 80, 150, 20);
+
+        JLabel labelDescription = new JLabel("Description");
+        labelDescription.setBounds(30, 110, 150, 20);
+        JTextArea descriptionArea = new JTextArea();
+        descriptionArea.setBounds(150, 110, 300, 100);
+
+        JButton submitButton = new JButton("Submit report");
+        submitButton.setBounds(150, 230, 150, 30);
+        submitButton.addActionListener(e -> {
+
+            String severity = severityField.getText();
+            String description = descriptionArea.getText();
+
+
+            submitReport(userId, severity, description, reportFrame);
+        });
+
+        reportFrame.add(labelSeverity);
+        reportFrame.add(severityField);
+        reportFrame.add(labelDescription);
+        reportFrame.add(descriptionArea);
+        reportFrame.add(submitButton);
+
+        reportFrame.setVisible(true);
+    }
+
+    public static void submitReport(int userId, String severity, String description, JFrame reportFrame) {
+        try {
+            Statement statement = connection.createStatement();
+            String insertReport = "INSERT INTO dbo.trashReports(UserID, Severity, Description) " +
+                    "VALUES ('"+ userId + "','" + severity + "', '" + description + "')";
+            int rowsInserted = statement.executeUpdate(insertReport);
+            if (rowsInserted != 0) {
+                JOptionPane.showMessageDialog(reportFrame, "success");
+            }
+            statement.close();
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+}
